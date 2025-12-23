@@ -1,0 +1,85 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Vector Stores & Indexes
+faiss_index/
+*.faiss
+*.index
+chroma_db/
+
+# Documents (optional - uncomment if you don't want to commit documents)
+# documents/
+# !documents/.gitkeep
+
+# Logs
+*.log
+logs/
+log/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+
+# Cache
+.cache/
+*.pkl
+*.pickle
+
+# Redis
+dump.rdb
+
+# API Keys & Secrets (double check)
+*.key
+*.pem
+secrets/
+
+# OS
+Thumbs.db

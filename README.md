@@ -1,8 +1,8 @@
-# 🛡️ SecureRAG
+# SecureRAG
 
 **SecureRAG** is a production-grade Retrieval-Augmented Generation (RAG) system that combines **LangChain** for orchestration and **Guardrails AI** for structured output validation. This system ensures that LLM responses are always reliable, well-structured, and compliant with predefined schemas.
 
-## 🎯 Project Overview
+##  Project Overview
 
 SecureRAG enables you to build question-answering systems that:
 
@@ -11,13 +11,13 @@ SecureRAG enables you to build question-answering systems that:
 - Validate and structure responses using Guardrails AI
 - Cite sources and provide confidence levels for transparency
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 User Query → Knowledge Base (FAISS) → RAG Engine → LLM Generation → Guardrails Validation → Structured Response
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ### **`config.py`**
 
@@ -96,7 +96,7 @@ Application entry point with interactive CLI:
 - Displays structured responses in JSON format
 - Supports `force_rebuild=True` for vector store updates
 
-## 🚀 Getting Started
+## 🚀Getting Started
 
 ### Prerequisites
 

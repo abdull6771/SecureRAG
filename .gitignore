@@ -81,5 +81,11 @@ dump.rdb
 *.pem
 secrets/
 
+# Guardrails Configuration
+.guardrailsrc
+.guardrails/
+
 # OS
 Thumbs.db
+# Guardrails config
+.guardrailsrc

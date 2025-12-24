@@ -93,3 +93,6 @@ secrets/
 Thumbs.db
 # Guardrails config
 .guardrailsrc
+
+# Ignore documentation folder
+docs/

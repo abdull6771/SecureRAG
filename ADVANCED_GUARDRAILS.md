@@ -4,7 +4,26 @@ The SecureRAG project uses Pydantic validation by default for compatibility. If 
 
 ## Installing Advanced Validators
 
-Guardrails validators are installed separately from the Guardrails Hub:
+**Note**: Advanced Guardrails validators are **optional**. The system works perfectly with basic Pydantic validators by default.
+
+Guardrails validators require authentication and are installed separately from the Guardrails Hub:
+
+### Step 1: Get a Guardrails Hub API Token
+
+1. Visit https://hub.guardrailsai.com/keys
+2. Sign up or log in to your account
+3. Generate an API token
+
+### Step 2: Configure Guardrails
+
+```bash
+# Configure guardrails with your token
+guardrails configure
+
+# You'll be prompted to enter your API token
+```
+
+### Step 3: Install Validators
 
 ```bash
 # Install the Guardrails CLI if not already installed
@@ -15,6 +34,10 @@ guardrails hub install hub://guardrails/toxic_language
 guardrails hub install hub://guardrails/detect_pii
 guardrails hub install hub://guardrails/valid_length
 ```
+
+### Alternative: Skip Advanced Validators
+
+If you don't want to set up Guardrails Hub authentication, the system works great with the default Pydantic validators already configured in `schemas.py`.
 
 ## Available Validators
 
@@ -89,6 +112,22 @@ MAX_RETRIES=3
 
 ## Troubleshooting
 
+### Authentication Error (401 Unauthorized)
+
+If you see:
+```
+ERROR:guardrails-cli:401
+ERROR:guardrails-cli:Unauthorized
+ERROR:guardrails-cli:Your token is invalid.
+```
+
+**Solution**:
+1. Get a token from https://hub.guardrailsai.com/keys
+2. Run `guardrails configure` and enter your token
+3. Try installing validators again
+
+**Alternative**: Continue using the default Pydantic validators (already working in the system).
+
 ### Import Error
 
 If you see `ImportError: cannot import name 'ValidLength'`, the validator is not installed:
@@ -97,6 +136,8 @@ If you see `ImportError: cannot import name 'ValidLength'`, the validator is not
 guardrails hub install hub://guardrails/valid_length
 ```
 
+Note: This requires authentication (see above).
+
 ### Validation Failures
 
 Check the Guardrails documentation for each validator's configuration options and adjust thresholds as needed.
@@ -104,6 +145,13 @@ Check the Guardrails documentation for each validator's configuration options an
 ### Performance
 
 Advanced validators may add latency. Monitor performance and adjust as needed for production use.
+
+### Why Advanced Validators Are Optional
+
+The SecureRAG system is designed to work perfectly without advanced Guardrails validators:
+- **Basic Pydantic validation** handles length, type checking, and structure validation
+- **LLM prompting** already enforces appropriate content through system instructions
+- **Advanced validators** are useful for additional safety layers in production but not required for core functionality
 
 ## Learn More
 

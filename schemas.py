@@ -1,20 +1,16 @@
 from typing import List, Literal
 from pydantic import BaseModel, Field, validator
-from guardrails.hub import ValidLength, ToxicLanguage, DetectPII
 
 class RAGResponse(BaseModel):
     """
     Structured output schema for the RAG pipeline.
-    The LLM is forced to adhere to this structure with advanced guardrails.
+    The LLM is forced to adhere to this structure.
     """
     
     answer: str = Field(
         description="The answer to the user's question based ONLY on the context.",
-        validators=[
-            ValidLength(min=5, max=1000, on_fail="fix"),
-            ToxicLanguage(threshold=0.5, validation_method="sentence", on_fail="exception"),
-            DetectPII(pii_entities=["EMAIL_ADDRESS", "PHONE_NUMBER", "SSN"], on_fail="fix")
-        ]
+        min_length=5,
+        max_length=1000
     )
     confidence: Literal["high", "medium", "low"] = Field(
         description="Confidence level in the answer based on available context."
@@ -24,9 +20,11 @@ class RAGResponse(BaseModel):
     )
 
     @validator('answer')
-    def validate_refusal(cls, v):
-        """Standardize refusal messages if needed."""
-        return v
+    def validate_answer(cls, v):
+        """Validate and clean the answer."""
+        if not v or len(v.strip()) < 5:
+            raise ValueError("Answer must be at least 5 characters long")
+        return v.strip()
 
 class QueryRequest(BaseModel):
     """Request schema for API queries."""

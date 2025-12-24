@@ -1,37 +1,27 @@
-# 🛡️ SecureRAG
+# SecureRAG
 
-**SecureRAG** is a production-grade Retrieval-Augmented Generation (RAG) system that combines **LangChain** for orchestration and **Guardrails AI** for structured output validation. This system ensures that LLM responses are always reliable, well-structured, and compliant with predefined schemas.
+Production-grade Retrieval-Augmented Generation (RAG) system with enterprise security and validation. Combines LangChain orchestration with Guardrails AI for reliable, structured, and compliant LLM outputs.
 
-## 🎯 Project Overview
+## Overview
 
-SecureRAG is a comprehensive RAG system with enterprise-ready features:
+SecureRAG implements advanced content safety, privacy protection, and quality control for RAG applications:
 
-- **Document Intelligence**: Retrieve relevant information from your local document collection
-- **Accurate Answers**: Generate precise answers using OpenAI's GPT models
-- **Advanced Validation**: Validate and structure responses with Guardrails AI (toxicity, PII detection)
-- **REST API**: Full-featured FastAPI web service with authentication
-- **Conversation Memory**: Redis-backed multi-turn conversation tracking
-- **Streaming Responses**: Real-time token streaming for better UX
-- **Source Citations**: Track which documents informed each answer with confidence levels
-- **Structured Logging**: Production-grade logging with structlog
-- **Testing Suite**: Comprehensive unit tests for all components
+- **Content Safety**: Toxicity detection and filtering
+- **Privacy Protection**: Automated PII detection and redaction
+- **Quality Control**: Response length and format validation
+- **Conversation Memory**: Redis-backed multi-turn conversations
+- **REST API**: Full-featured FastAPI service
+- **Source Attribution**: Document citations with confidence scoring
+- **Structured Logging**: Production-ready observability
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-User Query → FastAPI/CLI → Knowledge Base (FAISS) → RAG Engine → LLM Generation →
-Guardrails Validation → Redis Memory → Structured Response
+User Query → FastAPI/CLI → FAISS Vector Store → RAG Engine → LLM Generation →
+Guardrails Validation (ToxicLanguage, DetectPII, ValidLength) → Structured Response
 ```
 
-### Enhanced Architecture Features
-
-- **Multiple Interfaces**: REST API + CLI
-- **Conversation Memory**: Redis-backed with in-memory fallback
-- **Streaming Support**: Real-time token generation
-- **Advanced Guardrails**: Toxicity detection, PII filtering
-- **Document Metadata**: Enhanced tracking and filtering
-
-## 📁 Project Structure
+## Project Structure
 
 ### Core Files
 
@@ -41,189 +31,43 @@ Enhanced configuration with environment variable support:
 
 - **Model Settings**: GPT model selection and temperature
 - **RAG Parameters**: Chunk size, overlap, and retrieval count (k)
-- **Paths**: Vector store location and document directory
-- **API Configuration**: Host, port, API key authentication
-- **Redis Settings**: Memory backend configuration
-- **Logging**: Structured logging with configurable levels
-- **Guardrails**: Toxicity and PII detection settings
+- \*\*PathsComponents
 
-**Key Configurations:**
+**`config.py`** - Environment-based configuration management
 
-```python
-MODEL_NAME: "gpt-4o"
-CHUNK_SIZE: 1000
-CHUNK_OVERLAP: 200
-K_RETRIEVAL: 3
-API_PORT: 8000
-REDIS_HOST: "localhost"
-ENABLE_TOXICITY_CHECK: true
-ENABLE_PII_DETECTION: true
-```
+**`schemas.py`** - Pydantic schemas with Guardrails validators:
 
-### **`schemas.py`**
+- ToxicLanguage: Content safety validation
+- DetectPII: Automated PII redaction (email, phone, SSN)
+- ValidLength: Response length control (5-1000 characters)
 
-Enhanced with advanced Guardrails validators:
+**`ingestion.py`** - Document processing and FAISS vector store management
 
-- **RAGResponse**: Enforces structured JSON responses
-  - `answer`: Validated response (5-1000 characters)
-  - `confidence`: Categorical confidence level (high/medium/low)
-  - `sources`: List of document sources used
-- **Advanced Validators**:
-  - `ToxicLanguage`: Detects and filters toxic content
-  - `DetectPII`: Removes sensitive information (email, phone, SSN)
-  - `ValidLength`: Ensures appropriate response length
-- **QueryRequest**: API request schema with validation
-- **DocumentUploadResponse**: Document upload response schema
+**`engine.py`** - RAG pipeline orchestration with conversation memory
 
-### **`ingestion.py`**
+**`main.py`** - Interactive CLI interface
 
-Document processing with enhanced metadata:
+**`api.py`** - FastAPI REST service
 
-- **KnowledgeBase Class**: Complete document pipeline
-  - Loads documents (.txt, .pdf) from `./documents` directory
-  - **Metadata Enhancement**: Filename, size, upload date, extension
-  - **Metadata Filtering**: Filter documents by any metadata field
-  - Creates FAISS vector embeddings using OpenAI
-  - Saves/loads vector store for efficient reuse
-  - Structured logging throughout
+### API Endpoints
 
-**New Features:**
-
-- Enhanced document metadata tracking
-- Filter documents by metadata (extension, date, size)
-- Comprehensive error handling with logging
-
-### **`engine.py`**
-
-RAG engine with memory and streaming:
-
-- **SecureRAGEngine Class**: Orchestrates the RAG pipeline
-  - Initializes retriever, LLM, and Guardrails
-  - Builds LCEL (LangChain Expression Language) chain
-  - Formats retrieved documents with source citations
-  - Validates LLM output against `RAGResponse` schema
-- **ConversationMemory Class**: Multi-turn conversation support
-  - Redis-backed storage with in-memory fallback
-  - Session-based conversation tracking
-  - Automatic TTL management (1 hour)
-  - Context retention across queries
-
-**Pipeline Features:**
-
-1. Retrieve top-k relevant documents
-2. Add conversation context from memory
-3. Generate response via GPT-4o
-4. Parse and validate with Guardrails
-5. Save to conversation memory
-6. Return structured JSON response
-
-**Advanced Features:**
-
-- `query(user_query, session_id)`: Query with memory support
-- `query_stream()`: Async streaming responses
-- Input validation with logging
-- Error handling with fallback responses
-- Session management
-
-### **`main.py`**
-
-Enhanced CLI with logging and memory:
-
-- Initializes Knowledge Base and RAG Engine
-- Session-based conversation tracking
-- Interactive query loop with structured logging
-- Displays validated JSON responses
-- Graceful shutdown
-
-### **`api.py`** ⭐ NEW
-
-Full-featured FastAPI REST API:
-
-- **Authentication**: API key-based security
-- **CORS**: Cross-origin resource sharing support
-- **Auto Documentation**: Swagger UI + ReDoc
-
-**Endpoints:**
-
-- `GET /` - Health check
-- `GET /health` - Detailed system health
-- `POST /query` - Query with optional memory
+- `GET /health` - System health status
+- `POST /query` - Query with conversation memory
 - `POST /query/stream` - Streaming responses
-- `POST /documents/upload` - Upload documents
-- `DELETE /documents/{filename}` - Delete documents
+- `POST /documents/upload` - Document upload
+- `DELETE /documents/{filename}` - Document deletion
 - `GET /documents` - List all documents
-- `POST /memory/clear/{session_id}` - Clear conversation history
+- `DELETE /memory/{session_id}` - Clear conversation historybash
+  git clone https://github.com/abdull6771/SecureRAG.git
+  cd SecureRAG
 
-### Configuration Files
-
-### **`requirements.txt`** ⭐ NEW
-
-Complete dependency list:
-
-- Core: LangChain, Guardrails AI, OpenAI
-- API: FastAPI, Uvicorn
-- Storage: FAISS, Redis
-- Logging: Structlog
-- Testing: Pytest, pytest-asyncio
-- Development: Black, Flake8, Mypy
-
-### **`.env.example`** ⭐ NEW
-
-Environment variable template:
-
-- OpenAI API key
-- Model configuration
-- Redis settings
-- API configuration
-- Logging settings
-- Guardrails flags
-
-### **`.gitignore`** ⭐ NEW
-
-Comprehensive ignore patterns:
-
-- Python artifacts
-- Virtual environments
-- API keys and secrets
-- Vector stores and indexes
-- Logs and cache
-- IDE files
-
-### Testing Suite ⭐ NEW
-
-### **`tests/`**
-
-Complete test coverage:
-
-- `test_config.py` - Configuration validation
-- `test_ingestion.py` - Document loading and metadata
-- `test_schemas.py` - Pydantic schema validation
-- `test_engine.py` - Conversation memory tests
-- `test_api.py` - API endpoint testing
-
-Run tests:
-
-```bash
-pytest tests/ -v
-pytest tests/ --cov=. --cov-report=html
-```
-
-## 🚀 Getting Started
-
-### Quick Start
-
-1. **Clone the repository:**
-
-```bash
-git clone https://github.com/abdull6771/SecureRAG.git
-cd SecureRAG
-```
+````
 
 2. **Install dependencies:**
 
 ```bash
 pip install -r requirements.txt
-```
+````
 
 3. **Configure environment:**
 
@@ -364,61 +208,45 @@ curl -X POST http://localhost:8000/memory/clear/user123 \
 
 ### Streaming Response
 
-```text
-Guardrails AI ensures LLMs follow strict validation...
-[tokens streamed in real-time]
+````Getting Started
+
+### Installation
+
+```bash
+git clone https://github.com/abdull6771/SecureRAG.git
+cd SecureRAG
+pip install -r requirements.txt
+````
+
+### Configuration
+
+```bash
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
 ```
 
-## ✨ Key Features
+### Guardrails Setup
 
-### 🛡️ Advanced Security & Validation
+```bash
+guardrails configure --token <your-guardrails-token>
+guardrails hub install hub://guardrails/toxic_language
+guardrails hub install hub://guardrails/detect_pii
+guardrails hub install hub://guardrails/valid_length
+```
 
-- **Input Validation**: Query length and format checks
-- **Output Validation**: Schema compliance via Guardrails
-- **Toxicity Detection**: Filters harmful content
-- **PII Detection**: Removes sensitive information (email, phone, SSN)
-- **API Authentication**: Secure endpoints with API keys
-- **Source Citation**: Tracks which documents informed each answer
-- **Confidence Scoring**: Reliability indicators
-- **Refusal Handling**: Structured refusals when information is unavailable
+### Running
 
-### 💬 Conversation Memory
+**CLI Interface:**
 
-- **Redis Backend**: Production-grade storage
-- **In-Memory Fallback**: Works without Redis
-- **Session Tracking**: Multi-turn conversations
-- **TTL Management**: Auto-cleanup after 1 hour
-- **Context Retention**: Maintains conversation history
+```bash
+python main.py
+```
 
-### 🌊 Streaming Responses
+**REST API:**
 
-- **Real-time**: Tokens streamed as generated
-- **Async Support**: Non-blocking operations
-- **Better UX**: Progressive display for long responses
-- **Memory Integration**: Saves complete response after streaming
-
-### 📝 Structured Logging
-
-- **Production-Ready**: Contextual structured logs
-- **ISO Timestamps**: Precise timing information
-- **Log Levels**: Configurable verbosity
-- **Error Tracking**: Comprehensive error logging
-- **Performance Monitoring**: Query timing and metrics
-
-### 📄 Document Management
-
-- **Multiple Formats**: .txt, .pdf support
-- **Metadata Tracking**: Filename, size, date, extension
-- **Metadata Filtering**: Query by document properties
-- **Upload API**: Runtime document additions
-- **Auto-Indexing**: Vector store updates on upload
-
-### 🧪 Testing & Quality
-
-- **Unit Tests**: Comprehensive test coverage
-- **Integration Tests**: API endpoint testing
-- **Pytest**: Industry-standard testing framework
-- **Code Coverage**: Track test effectiveness
+````bash
+uvicorn api:app --host 127.0.0.1 --port 8000
+# Documentation: http://localhost:8000/docs
 
 ## 🧪 Customization
 
@@ -429,122 +257,41 @@ Edit `.env`:
 ```bash
 MODEL_NAME=gpt-3.5-turbo  # or gpt-4, etc.
 TEMPERATURE=0.7
-```
+````
 
 ### Adjust RAG Settings
 
 Edit `.env`:
 
-```bash
+````bash
 K_RETRIEVAL=5  # Retrieve more documents
 CHUNK_SIZE=500  # Smaller chunks
 CHUNK_OVERLAP=100
-```
+```API Usage
 
-### Configure Redis Memory
-
-Edit `.env`:
+### Query Example
 
 ```bash
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_DB=0
-```
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What is machine learning?",
+    "session_id": "user123"
+  }'
+````
 
-### Add Custom Guardrails
+### Response Format
 
-Edit `schemas.py`:
-
-```python
-from guardrails.hub import ToxicLanguage, DetectPII, RegexMatch
-
-answer: str = Field(
-    validators=[
-        ValidLength(min=5, max=1000, on_fail="fix"),
-        ToxicLanguage(threshold=0.5, on_fail="exception"),
-        DetectPII(pii_entities=["EMAIL_ADDRESS", "PHONE_NUMBER"], on_fail="fix"),
-        RegexMatch(regex=r"^[A-Za-z0-9\s.,!?-]+$", on_fail="reask")
-    ]
-)
-```
-
-### Enable/Disable Features
-
-Edit `.env`:
-
-```bash
-ENABLE_TOXICITY_CHECK=true
-ENABLE_PII_DETECTION=true
-LOG_LEVEL=INFO
-API_KEY=your-secure-api-key
-```
-
-### Document Metadata Filtering
-
-Use programmatically:
-
-```python
-from ingestion import KnowledgeBase
-
-kb = KnowledgeBase()
-
-# Filter by extension
-pdf_docs = kb.load_documents(filter_metadata={"extension": ".pdf"})
-
-# Filter by any metadata field
-recent_docs = kb.load_documents(filter_metadata={"author": "John Doe"})
-```
-
-## 🧪 Testing
-
-### Run All Tests
-
-```bash
-pytest tests/ -v
-```
-
-### Run with Coverage
-
-```bash
-pytest tests/ --cov=. --cov-report=html
-```
-
-### Run Specific Tests
-
-```bash
-pytest tests/test_api.py -v
-pytest tests/test_schemas.py::test_rag_response_valid -v
-```
-
-## 🐳 Optional: Redis Setup
-
-### Using Docker
-
-```bash
-docker run -d -p 6379:6379 redis:latest
-```
-
-### Using Homebrew (macOS)
-
-```bash
-brew install redis
-brew services start redis
-```
-
-### Verify Redis Connection
-
-```bash
-redis-cli ping
-# Should return: PONG
-```
-
-## 📊 Monitoring & Logs
-
-### View Logs
+````json
+{
+  "answer": "Machine learning is...",
+  "confidence": "high",
+  "sources": ["document.pdf"]
+}
 
 ```bash
 tail -f app.log
-```
+````
 
 ### Configure Logging
 
@@ -612,7 +359,7 @@ docker run -p 8000:8000 --env-file .env securerag
 
 ### Docker Compose
 
-```yaml
+````yaml
 version: "3.8"
 services:
   api:
@@ -624,56 +371,35 @@ services:
     depends_on:
       - redis
 
-  redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
-```
+  rKey Features
 
-## 🔍 Troubleshooting
+### Security & Validation
 
-### Issue: "OPENAI_API_KEY not found"
+**ToxicLanguage Validator**
+- Sentence-level toxicity analysis
+- Blocks harmful, offensive content
+- Configurable threshold (default: 0.5)
+- Essential for customer-facing applications
 
-**Solution**: Ensure `.env` file exists with `OPENAI_API_KEY=sk-...`
+**DetectPII Validator**
+- Automated PII detection using Microsoft Presidio
+- Redacts emails, phone numbers, SSNs
+- GDPR/CCPA compliance by default
+- Real-time privacy protection
 
-### Issue: Redis connection failed
+**ValidLength Validator**
+- Response length control (5-1000 characters)
+- Auto-correction for violations
+- Prevents LLM verbosity
+- Ensures consistent quality
 
-**Solution**: System automatically falls back to in-memory storage. Install Redis or disable memory features.
+### Additional Features
 
-### Issue: No documents found
-
-**Solution**: Place .txt or .pdf files in `./documents/` directory. System creates a sample document automatically.
-
-### Issue: Import errors
-
-**Solution**:
-
-```bash
-pip install -r requirements.txt
-```
-
-### Issue: API authentication failed
-
-**Solution**: Include API key in header: `-H "X-API-Key: your-key"`
-
-### Issue: Guardrails validation errors
-
-**Solution**: Check logs for specific validation failures. Adjust validators in `schemas.py` if needed.
-
-## 📚 Documentation
-
-- **Setup Guide**: See [SETUP.md](SETUP.md) for detailed setup instructions
-- **API Documentation**: Available at http://localhost:8000/docs when running
-- **Enhancements**: See [ENHANCEMENTS.md](ENHANCEMENTS.md) for feature details
-
-## 🛠️ Technology Stack
-
-- **LangChain**: RAG orchestration and document processing
-- **Guardrails AI**: Output validation and safety
-- **FastAPI**: Modern web framework for APIs
-- **OpenAI**: GPT models for generation
-- **FAISS**: Vector similarity search
-- **Redis**: Conversation memory backend
+- Conversation memory with Redis backend
+- Streaming responses for real-time UX
+- Structured logging with contextual information
+- Document metadata tracking and filtering
+- Source citation with confidence scoring
 - **Pydantic**: Data validation
 - **Structlog**: Structured logging
 - **Pytest**: Testing framework
@@ -688,3 +414,74 @@ MIT License - feel free to use this project for your own applications.
 
 ---
 
+Configuration
+
+### Environment Variables
+
+```bash
+# Model Settings
+MODEL_NAME=gpt-4o
+TEMPERATURE=0.0
+
+# RAG Parameters
+CHUNK_SIZE=1000
+CHUNK_OVERLAP=200
+K_RETRIEVAL=3
+
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# Guardrails
+ENABLE_TOXICITY_CHECK=true
+ENABLE_PII_DETECTION=true
+````
+
+### Custom Validators
+
+Modify `schemas.py` to add or adjust validators:
+
+````python
+from guardrails.hub import ValidLength, ToxicLanguage, DetectPII
+
+answer: str = Field(
+    validators=[
+        ValidLength(min=5, max=1000, on_fail="fix"),
+        ToxicLanguage(threshold=0.5, validation_method="sentence", on_fail="exception"),
+        DetectPII(pii_entities=["EMAIL_ADDRESS", "PHONE_NUMBER", "SSN"], on_fail="fix")
+    ]
+Testing
+
+```bash
+pytest tests/ -v
+pytest tests/ --cov=. --cov-report=html
+````
+
+## Redis Setup (Optional)
+
+Redis provides persistent conversation memory. System falls back to in-memory storage if unavailable.
+
+````bash
+# Docker
+docker run -d -p 6379:6379 redis:latest
+
+# Homebrew (macOS)
+brew install redis && brew services start redis
+```Technology Stack
+
+- LangChain - RAG orchestration
+- Guardrails AI - Output validation and safety
+- FastAPI - REST API framework
+- OpenAI GPT-4o - Language model
+- FAISS - Vector similarity search
+- Redis - Conversation memory
+- Structlog - Structured logging
+
+## License
+
+MIT License
+
+---
+
+**Built with production security and compliance in mind.**
+````

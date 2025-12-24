@@ -6,7 +6,7 @@ openai
 
 # Vector Store & Embeddings
 faiss-cpu
-numpy
+numpy<2  # Required for compatibility with spacy/torch in Guardrails validators
 
 # Document Processing
 pypdf

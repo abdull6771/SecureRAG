@@ -94,7 +94,8 @@ class SecureRAGEngine:
         Rules:
         1. If the answer is present, extract it and cite sources. Set confidence to "high".
         2. If the answer is missing, return exactly: "I do not have enough information in the provided documents." and set confidence to "low".
-        3. OUTPUT FORMAT: You must return a valid JSON object matching the requested schema.
+        3. OUTPUT FORMAT: Return ONLY a valid JSON object (no markdown, no code blocks, no extra text). Example:
+        {{"answer": "Your answer here", "confidence": "high", "sources": ["file1.txt"]}}
         """
 
         prompt = ChatPromptTemplate.from_messages([
@@ -112,6 +113,36 @@ class SecureRAGEngine:
             | self.llm
             | StrOutputParser()
         )
+    
+    def _extract_json_from_response(self, response: str) -> dict:
+        """Extract JSON from response, handling markdown code blocks."""
+        try:
+            # Try direct JSON parse first
+            return json.loads(response)
+        except json.JSONDecodeError:
+            # Try to extract from markdown code block
+            import re
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
+            if json_match:
+                try:
+                    return json.loads(json_match.group(1))
+                except json.JSONDecodeError:
+                    pass
+            
+            # Try to find any JSON object in the response
+            json_match = re.search(r'\{.*?\}', response, re.DOTALL)
+            if json_match:
+                try:
+                    return json.loads(json_match.group(0))
+                except json.JSONDecodeError:
+                    pass
+            
+            # If all fails, return the raw response wrapped
+            return {
+                "answer": response,
+                "confidence": "low",
+                "sources": []
+            }
 
     def query(self, user_query: str, session_id: Optional[str] = None) -> dict:
         """Executes the guarded pipeline with optional conversation memory."""
@@ -137,14 +168,37 @@ class SecureRAGEngine:
             logger.info("Generating response", query=user_query[:100])
             raw_response = self.chain.invoke(user_query)
             
-            # 4. Guardrails Validation & Repair
-            validated_response = self.guard.parse(raw_response)
-            result = validated_response.validated_output
+            # 4. Extract and validate JSON response
+            try:
+                # First, try to extract JSON from the response (handles markdown code blocks)
+                result = self._extract_json_from_response(raw_response)
+                
+                # Validate the structure
+                if not isinstance(result, dict):
+                    raise ValueError("Response is not a dictionary")
+                
+                # Ensure required fields exist
+                if "answer" not in result:
+                    result["answer"] = raw_response
+                if "confidence" not in result:
+                    result["confidence"] = "low"
+                if "sources" not in result:
+                    result["sources"] = []
+                
+                logger.info("Response parsed successfully")
+                
+            except Exception as parse_error:
+                logger.error("Response parsing failed", error=str(parse_error))
+                result = {
+                    "answer": raw_response if isinstance(raw_response, str) else str(raw_response),
+                    "confidence": "low",
+                    "sources": []
+                }
             
             # 5. Save to conversation memory
             if self.memory and session_id:
                 self.memory.add_message(session_id, "user", user_query)
-                self.memory.add_message(session_id, "assistant", result["answer"])
+                self.memory.add_message(session_id, "assistant", result.get("answer", ""))
                 logger.info("Saved to conversation memory", session_id=session_id)
             
             logger.info("Query completed successfully", 

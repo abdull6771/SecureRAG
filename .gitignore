@@ -42,6 +42,10 @@ venv.bak/
 .env.local
 .env.*.local
 
+# Documentation (except README)
+*.md
+!README.md
+
 # Vector Stores & Indexes
 faiss_index/
 *.faiss

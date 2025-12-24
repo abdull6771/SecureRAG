@@ -1,4 +1,6 @@
 import guardrails as gd
+from guardrails import Guard
+from guardrails.hub import ValidLength, ToxicLanguage, DetectPII
 import json
 from typing import Optional, List, Dict, AsyncIterator
 from langchain_openai import ChatOpenAI
@@ -68,8 +70,14 @@ class SecureRAGEngine:
             temperature=config.TEMPERATURE,
             api_key=config.OPENAI_API_KEY
         )
-        # Initialize Guardrails with Pydantic Schema
-        self.guard = gd.Guard.from_pydantic(output_class=RAGResponse)
+        
+        # Initialize Guardrails Guard with validators
+        self.guard = Guard().use_many(
+            ValidLength(min=5, max=1000, on_fail="fix"),
+            ToxicLanguage(threshold=0.5, validation_method="sentence", on_fail="exception"),
+            DetectPII(pii_entities=["EMAIL_ADDRESS", "PHONE_NUMBER", "SSN"], on_fail="fix")
+        )
+        
         self.chain = self._build_chain()
         self.memory = ConversationMemory() if enable_memory else None
         logger.info("SecureRAG engine initialized", 
@@ -168,27 +176,41 @@ class SecureRAGEngine:
             logger.info("Generating response", query=user_query[:100])
             raw_response = self.chain.invoke(user_query)
             
-            # 4. Extract and validate JSON response
+            # 4. Extract and validate JSON response with Guardrails
             try:
                 # First, try to extract JSON from the response (handles markdown code blocks)
-                result = self._extract_json_from_response(raw_response)
+                result_dict = self._extract_json_from_response(raw_response)
                 
                 # Validate the structure
-                if not isinstance(result, dict):
+                if not isinstance(result_dict, dict):
                     raise ValueError("Response is not a dictionary")
                 
                 # Ensure required fields exist
-                if "answer" not in result:
-                    result["answer"] = raw_response
-                if "confidence" not in result:
-                    result["confidence"] = "low"
-                if "sources" not in result:
-                    result["sources"] = []
+                if "answer" not in result_dict:
+                    result_dict["answer"] = raw_response
+                if "confidence" not in result_dict:
+                    result_dict["confidence"] = "low"
+                if "sources" not in result_dict:
+                    result_dict["sources"] = []
                 
                 logger.info("Response parsed successfully")
                 
+                # Apply Guardrails validators to the answer field
+                try:
+                    guarded_answer = self.guard.validate(result_dict["answer"])
+                    result_dict["answer"] = guarded_answer.validated_output
+                    logger.info("Guardrails validators applied successfully")
+                except Exception as guard_error:
+                    logger.error("Guardrails validation failed", error=str(guard_error))
+                    # If validation fails (e.g., toxicity), raise the error
+                    raise
+                
+                # Create validated response object
+                validated_response = RAGResponse(**result_dict)
+                result = validated_response.model_dump()
+                
             except Exception as parse_error:
-                logger.error("Response parsing failed", error=str(parse_error))
+                logger.error("Response parsing/validation failed", error=str(parse_error))
                 result = {
                     "answer": raw_response if isinstance(raw_response, str) else str(raw_response),
                     "confidence": "low",

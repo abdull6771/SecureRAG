@@ -1,10 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
 import os
 import shutil
-import uuid
 
 from ingestion import KnowledgeBase
 from engine import SecureRAGEngine
@@ -21,7 +19,7 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure based on .env ALLOWED_ORIGINS
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,14 +28,6 @@ app.add_middleware(
 # Global instances
 kb = None
 rag_engine = None
-
-# API Key Authentication
-async def verify_api_key(x_api_key: Optional[str] = Header(None)):
-    """Simple API key authentication."""
-    if config.API_KEY and x_api_key != config.API_KEY:
-        logger.warning("Unauthorized API access attempt")
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-    return x_api_key
 
 @app.on_event("startup")
 async def startup_event():
@@ -57,38 +47,22 @@ async def startup_event():
         logger.error("Failed to initialize RAG engine", error=str(e))
         raise
 
-@app.get("/")
-async def root():
+@app.get("/health")
+async def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
         "service": "SecureRAG",
         "version": "1.0.0",
-        "model": config.MODEL_NAME
-    }
-
-@app.get("/health")
-async def health_check():
-    """Detailed health check."""
-    return {
-        "status": "healthy",
+        "model": config.MODEL_NAME,
         "vector_store": os.path.exists(config.VECTOR_STORE_PATH),
         "documents_path": os.path.exists(config.DOCS_PATH),
         "memory_enabled": rag_engine.memory is not None if rag_engine else False
     }
 
 @app.post("/query", response_model=RAGResponse)
-async def query_endpoint(
-    request: QueryRequest,
-    api_key: str = Depends(verify_api_key)
-):
-    """
-    Query the RAG system with optional conversation memory.
-    
-    - **query**: The user's question (3-500 characters)
-    - **session_id**: Optional session ID for conversation tracking
-    - **stream**: Enable streaming response (not used in this endpoint)
-    """
+async def query_endpoint(request: QueryRequest):
+    """Query the RAG system with optional conversation memory."""
     try:
         logger.info("Received query", 
                    query_preview=request.query[:50],
@@ -106,15 +80,8 @@ async def query_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/query/stream")
-async def query_stream_endpoint(
-    request: QueryRequest,
-    api_key: str = Depends(verify_api_key)
-):
-    """
-    Stream the RAG response in real-time.
-    
-    Returns a streaming response with tokens as they're generated.
-    """
+async def query_stream_endpoint(request: QueryRequest):
+    """Stream the RAG response in real-time."""
     try:
         logger.info("Starting streaming query", 
                    query_preview=request.query[:50])
@@ -133,17 +100,9 @@ async def query_stream_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/documents/upload", response_model=DocumentUploadResponse)
-async def upload_document(
-    file: UploadFile = File(...),
-    api_key: str = Depends(verify_api_key)
-):
-    """
-    Upload a document to the knowledge base.
-    
-    Supported formats: .txt, .pdf
-    """
+async def upload_document(file: UploadFile = File(...)):
+    """Upload a document to the knowledge base."""
     try:
-        # Validate file extension
         allowed_extensions = [".txt", ".pdf"]
         file_ext = os.path.splitext(file.filename)[1].lower()
         
@@ -153,7 +112,6 @@ async def upload_document(
                 detail=f"Unsupported file type. Allowed: {allowed_extensions}"
             )
         
-        # Save file
         file_path = os.path.join(config.DOCS_PATH, file.filename)
         os.makedirs(config.DOCS_PATH, exist_ok=True)
         
@@ -162,7 +120,6 @@ async def upload_document(
         
         logger.info("Document uploaded", filename=file.filename, size=file.size)
         
-        # Rebuild vector store (in production, use a background task)
         vectorstore = kb.get_vector_store(force_rebuild=True)
         
         global rag_engine
@@ -180,10 +137,7 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/documents/{filename}")
-async def delete_document(
-    filename: str,
-    api_key: str = Depends(verify_api_key)
-):
+async def delete_document(filename: str):
     """Delete a document from the knowledge base."""
     try:
         file_path = os.path.join(config.DOCS_PATH, filename)
@@ -194,7 +148,6 @@ async def delete_document(
         os.remove(file_path)
         logger.info("Document deleted", filename=filename)
         
-        # Rebuild vector store
         vectorstore = kb.get_vector_store(force_rebuild=True)
         
         global rag_engine
@@ -210,7 +163,7 @@ async def delete_document(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/documents")
-async def list_documents(api_key: str = Depends(verify_api_key)):
+async def list_documents():
     """List all documents in the knowledge base."""
     try:
         if not os.path.exists(config.DOCS_PATH):
@@ -232,11 +185,8 @@ async def list_documents(api_key: str = Depends(verify_api_key)):
         logger.error("Failed to list documents", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/memory/clear/{session_id}")
-async def clear_memory(
-    session_id: str,
-    api_key: str = Depends(verify_api_key)
-):
+@app.delete("/memory/{session_id}")
+async def clear_memory(session_id: str):
     """Clear conversation memory for a specific session."""
     try:
         if rag_engine.memory:
